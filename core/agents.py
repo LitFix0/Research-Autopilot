@@ -1,14 +1,19 @@
+import os
 from crewai import Agent
-from langchain_groq import ChatGroq
-from core.config import GROQ_API_KEY, GROQ_MODEL
+from crewai.llm import LLM
+from core.config import GROQ_API_KEY, GROQ_MODEL, NUM_SEARCHER_AGENTS
+
+# Disable LiteLLM caching globally via env var — avoids the cache=False bool bug
+os.environ["GROQ_API_KEY"]        = GROQ_API_KEY
+os.environ["LITELLM_CACHE"]       = "false"
+os.environ["LITELLM_LOCAL_CACHE"] = "false"
 
 
-def get_llm():
-    """Shared Groq LLM instance for all agents."""
-    return ChatGroq(
-        api_key=GROQ_API_KEY,
-        model_name=GROQ_MODEL,
+def get_llm() -> LLM:
+    return LLM(
+        model=f"groq/{GROQ_MODEL}",
         temperature=0.3,
+        # no cache param here — controlled via env vars above
     )
 
 
@@ -88,8 +93,6 @@ def make_critic() -> Agent:
 
 
 def build_all_agents() -> dict:
-    """Instantiate and return all agents as a named dict."""
-    from core.config import NUM_SEARCHER_AGENTS
     return {
         "planner":     make_planner(),
         "searchers":   [make_searcher(i + 1) for i in range(NUM_SEARCHER_AGENTS)],
