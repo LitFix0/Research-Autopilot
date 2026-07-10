@@ -3,6 +3,28 @@ import os
 from datetime import datetime
 
 
+# ── Monkey-patch: strip cache_breakpoint from messages before Groq sees it ──
+def _patch_litellm():
+    try:
+        import litellm
+        _original_completion = litellm.completion
+
+        def _patched_completion(*args, **kwargs):
+            messages = kwargs.get("messages", [])
+            for msg in messages:
+                if isinstance(msg, dict) and "cache_breakpoint" in msg:
+                    del msg["cache_breakpoint"]
+            kwargs["messages"] = messages
+            return _original_completion(*args, **kwargs)
+
+        litellm.completion = _patched_completion
+    except ImportError:
+        pass
+
+_patch_litellm()
+# ────────────────────────────────────────────────────────────────────────────
+
+
 def print_banner():
     print("""
 ╔══════════════════════════════════════════════╗
@@ -105,7 +127,6 @@ def run():
             import traceback
             traceback.print_exc()
 
-        # Ask to run another query
         print("\n" + "─" * 50)
         try:
             again = input("Run another query? (y/n): ").strip().lower()
